@@ -395,7 +395,7 @@
 
             .word-card .word {
                 color: #000000 !important;
-                font-size: 46pt !important;
+                font-size: var(--adaptive-font-size, 46pt) !important;
                 font-weight: 700 !important;
                 line-height: 1.2 !important;
                 font-family: 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive !important;
@@ -779,21 +779,25 @@
 
             exportStatus.textContent = '请在打印对话框中选择"另存为PDF"';
 
-            setTimeout(() => {
-                window.print();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    applyAdaptiveFontSizes();
+                    setTimeout(() => {
+                        window.print();
 
-                // 打印完成后恢复
-                setTimeout(() => {
-                    document.querySelectorAll('.cards-container').forEach(container => {
-                        container.classList.remove('active');
-                    });
-                    document.querySelectorAll('.pagination').forEach(p => {
-                        p.style.display = 'flex';
-                    });
-                    goToPage(originalPage);
-                    exportStatus.style.display = 'none';
-                }, 100);
-            }, 300);
+                        setTimeout(() => {
+                            document.querySelectorAll('.cards-container').forEach(container => {
+                                container.classList.remove('active');
+                            });
+                            document.querySelectorAll('.pagination').forEach(p => {
+                                p.style.display = 'flex';
+                            });
+                            goToPage(originalPage);
+                            exportStatus.style.display = 'none';
+                        }, 100);
+                    }, 300);
+                });
+            });
         }
 
         // 事件绑定
@@ -819,6 +823,38 @@
             }
         });
 
+        // 根据打印布局，卡片大约能容纳7个46pt的字符
+        const PRINT_CARD_CHAR_CAPACITY = 7;
+
+        // 计算单词自适应字号（基于单词长度）
+        function calculateFontSize(word) {
+            const baseSize = 46;
+            const minSize = 18;
+            const wordLength = word.length;
+
+            if (wordLength <= PRINT_CARD_CHAR_CAPACITY) {
+                return baseSize;
+            }
+
+            const ratio = PRINT_CARD_CHAR_CAPACITY / wordLength;
+            const fontSize = Math.floor(baseSize * ratio);
+            return Math.max(fontSize, minSize);
+        }
+
+        // 为所有单词卡应用自适应的打印字号
+        function applyAdaptiveFontSizes() {
+            const cards = document.querySelectorAll('.word-card');
+
+            cards.forEach(card => {
+                const wordSpan = card.querySelector('.word');
+                if (wordSpan) {
+                    const word = wordSpan.textContent;
+                    const fontSize = calculateFontSize(word);
+                    wordSpan.style.fontSize = fontSize + 'pt';
+                }
+            });
+        }
+
         // 阻止打印预览时的某些行为
         window.addEventListener('beforeprint', () => {
             document.querySelectorAll('.cards-container').forEach(container => {
@@ -826,6 +862,12 @@
             });
             document.querySelectorAll('.pagination').forEach(p => {
                 p.style.display = 'none';
+            });
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    applyAdaptiveFontSizes();
+                });
             });
         });
 
